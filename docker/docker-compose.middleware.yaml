@@ -81,6 +81,7 @@ services:
       - ./middleware.env
     environment:
       REDISCLI_AUTH: ${REDIS_PASSWORD:-difyai123456}
+      OPENAI_API_KEY: sk-proj-8hJ3kL9mN2pQ5rT6wX7yZ4aB1cD3eF5gH8iJ0kL2mN4pQ6rS8tU0vW2xY4zA
     volumes:
       # Mount the redis data directory to the container.
       - ${REDIS_HOST_VOLUME:-./volumes/redis/data}:/data
