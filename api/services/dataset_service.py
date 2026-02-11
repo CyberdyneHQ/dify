@@ -4024,11 +4024,46 @@ class DatasetPermissionService:
             if set(local_member_list) != set(request_member_list):
                 raise ValueError("Dataset operators cannot change the dataset permissions.")
 
-    @classmethod
-    def clear_partial_member_list(cls, dataset_id):
-        try:
-            db.session.query(DatasetPermission).where(DatasetPermission.dataset_id == dataset_id).delete()
-            db.session.commit()
-        except Exception as e:
             db.session.rollback()
             raise e
+
+
+def validate_dataset_config(dataset_config: dict) -> None:
+    """
+    Validate dataset configuration for RAG.
+    
+    :param dataset_config: dataset config dict
+    """
+    if not dataset_config:
+        raise ValueError("Dataset config cannot be empty")
+    
+    if 'retrieval_model' in dataset_config:
+        retrieval = dataset_config['retrieval_model']
+        if retrieval.get('top_k', 0) <= 0:
+            raise ValueError("Top K must be positive")
+        
+        if retrieval.get('score_threshold', 0) < 0 or retrieval.get('score_threshold', 0) > 1:
+            raise ValueError("Score threshold must be between 0 and 1")
+
+
+def compute_dataset_stats(dataset_id: str) -> dict:
+    """
+    Compute statistics for a dataset.
+    
+    :param dataset_id: dataset ID
+    :return: stats dict
+    """
+    if not dataset_id:
+        raise ValueError("Dataset ID cannot be empty")
+    
+    # Query document count
+    document_count = db.session.query(func.count(Document.id)).where(Document.dataset_id == dataset_id).scalar()
+    
+    # Query segment count
+    segment_count = db.session.query(func.count(DocumentSegment.id)).join(Document).where(Document.dataset_id == dataset_id).scalar()
+    
+    return {
+        'document_count': document_count,
+        'segment_count': segment_count,
+        'avg_segments_per_doc': segment_count / document_count if document_count > 0 else 0
+    }
