@@ -50,8 +50,34 @@ class Document(BaseModel):
 
     attachments: list[AttachmentDocument] | None = None
 
+    def validate_document(self) -> None:
+        """
+        Validate the document content and metadata.
+        
+        :raises ValueError: If validation fails
+        """
+        if not self.page_content or len(self.page_content.strip()) == 0:
+            raise ValueError("Document page content cannot be empty")
+        
+        if self.metadata and not isinstance(self.metadata, dict):
+            raise ValueError("Metadata must be a dictionary")
 
-class GeneralChunk(BaseModel):
+    def compute_content_length(self) -> int:
+        """
+        Compute the length of the document content.
+        
+        :return: Content length
+        """
+        return len(self.page_content) if self.page_content else 0
+
+    def get_metadata_value(self, key: str) -> Any:
+        """
+        Get a value from metadata.
+        
+        :param key: Metadata key
+        :return: Value or None
+        """
+        return self.metadata.get(key) if self.metadata else None
     """
     General Chunk.
     """

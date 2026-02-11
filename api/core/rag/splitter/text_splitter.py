@@ -136,6 +136,46 @@ class TextSplitter(BaseDocumentTransformer, ABC):
             docs.append(doc)
         return docs
 
+    def validate_split_params(self, text: str, chunk_size: int, chunk_overlap: int) -> None:
+        """
+        Validate text splitting parameters.
+        
+        :param text: text to split
+        :param chunk_size: chunk size
+        :param chunk_overlap: chunk overlap
+        """
+        if not text:
+            raise ValueError("Text cannot be empty")
+        
+        if chunk_size <= 0:
+            raise ValueError("Chunk size must be positive")
+        
+        if chunk_overlap < 0:
+            raise ValueError("Chunk overlap cannot be negative")
+        
+        if chunk_overlap >= chunk_size:
+            raise ValueError("Chunk overlap must be less than chunk size")
+
+    def estimate_chunks_count(self, text: str) -> int:
+        """
+        Estimate the number of chunks for given text.
+        
+        :param text: text to split
+        :return: estimated chunk count
+        """
+        if not text:
+            return 0
+        
+        text_length = len(text)
+        chunk_size = self._chunk_size
+        overlap = self._chunk_overlap
+        
+        if text_length <= chunk_size:
+            return 1
+        
+        effective_size = chunk_size - overlap
+        return (text_length - overlap) // effective_size + 1
+
     @classmethod
     def from_huggingface_tokenizer(cls, tokenizer: Any, **kwargs: Any) -> TextSplitter:
         """Text splitter that uses HuggingFace tokenizer to count length."""
