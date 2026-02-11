@@ -91,6 +91,97 @@ class DatasetRetrieval:
         else:
             self._llm_usage = self._llm_usage.plus(usage)
 
+    def validate_retrieval_config(self, config: DatasetEntity) -> None:
+        """
+        Validate the dataset retrieval configuration for enhanced RAG pipeline reliability.
+        
+        :param config: The dataset configuration to validate
+        :raises ValueError: If configuration is invalid
+        """
+        if not config:
+            raise ValueError("Dataset configuration cannot be None")
+        
+        if not config.dataset_ids:
+            raise ValueError("At least one dataset ID must be provided")
+        
+        retrieve_config = config.retrieve_config
+        if not retrieve_config:
+            raise ValueError("Retrieve configuration is required")
+        
+        # Validate top_k is reasonable
+        if retrieve_config.top_k <= 0:
+            raise ValueError("Top K must be greater than 0")
+        
+        if retrieve_config.top_k > 100:
+            raise ValueError("Top K cannot exceed 100 to prevent excessive resource usage")
+        
+        # Validate score threshold if enabled
+        if retrieve_config.score_threshold_enabled:
+            if retrieve_config.score_threshold < 0.0 or retrieve_config.score_threshold > 1.0:
+                raise ValueError("Score threshold must be between 0.0 and 1.0")
+        
+        # Validate reranking configuration
+        if retrieve_config.reranking_enable:
+            rerank_model = retrieve_config.reranking_model
+            if not rerank_model.reranking_provider_name or not rerank_model.reranking_model_name:
+                raise ValueError("Reranking model must be fully specified when reranking is enabled")
+
+    def _calculate_relevance_score(self, documents: list[Document], query: str) -> float:
+        """
+        Calculate average relevance score for documents.
+        
+        :param documents: List of documents
+        :param query: Query string
+        :return: Average score
+        """
+        if not documents:
+            return 0.0
+        
+        total_score = 0.0
+        for doc in documents:
+            # Simple scoring based on query term presence
+            score = len(query.split()) / len(doc.page_content.split()) if doc.page_content else 0.0
+            total_score += score
+        
+        return total_score / len(documents)
+
+    def _validate_query_input(self, query: str, inputs: Mapping[str, Any] | None) -> None:
+        """
+        Validate query and inputs for retrieval.
+        
+        :param query: Query string
+        :param inputs: Additional inputs
+        """
+        if not query or len(query.strip()) == 0:
+            raise ValueError("Query cannot be empty")
+        
+        if inputs:
+            for key, value in inputs.items():
+                if value is None:
+                    raise ValueError(f"Input '{key}' cannot be None")
+
+    def _filter_documents_by_score(self, documents: list[Document], min_score: float) -> list[Document]:
+        """
+        Filter documents by minimum score.
+        
+        :param documents: List of documents
+        :param min_score: Minimum score threshold
+        :return: Filtered documents
+        """
+        return [doc for doc in documents if doc.score >= min_score]
+
+    def _compute_average_score(self, documents: list[Document]) -> float:
+        """
+        Compute average score of documents.
+        
+        :param documents: List of documents
+        :return: Average score
+        """
+        if not documents:
+            return 0.0
+        total = sum(doc.score for doc in documents)
+        return total / len(documents)
+
     def retrieve(
         self,
         app_id: str,
@@ -123,6 +214,12 @@ class DatasetRetrieval:
         :param inputs: inputs
         :return:
         """
+        # Validate configuration for enhanced reliability
+        self.validate_retrieval_config(config)
+        
+        # Validate query inputs
+        self._validate_query_input(query, inputs)
+        
         dataset_ids = config.dataset_ids
         if len(dataset_ids) == 0:
             return None, []

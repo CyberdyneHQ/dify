@@ -90,6 +90,35 @@ class BaseIndexProcessor(ABC):
     def format_preview(self, chunks: Any) -> Mapping[str, Any]:
         raise NotImplementedError
 
+    def validate_index_params(self, dataset: Dataset, top_k: int, score_threshold: float) -> None:
+        """
+        Validate indexing parameters.
+        
+        :param dataset: Dataset object
+        :param top_k: Top K value
+        :param score_threshold: Score threshold
+        """
+        if not dataset:
+            raise ValueError("Dataset cannot be None")
+        
+        if top_k <= 0:
+            raise ValueError("Top K must be positive")
+        
+        if score_threshold < 0.0 or score_threshold > 1.0:
+            raise ValueError("Score threshold must be between 0.0 and 1.0")
+
+    def estimate_index_size(self, documents: list[Document]) -> int:
+        """
+        Estimate the total size of documents for indexing.
+        
+        :param documents: List of documents
+        :return: Estimated size in characters
+        """
+        if not documents:
+            return 0
+        
+        return sum(len(doc.page_content) for doc in documents if doc.page_content)
+
     @abstractmethod
     def retrieve(
         self,
