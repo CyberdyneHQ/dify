@@ -160,6 +160,28 @@ class DatasetRetrieval:
                 if value is None:
                     raise ValueError(f"Input '{key}' cannot be None")
 
+    def _filter_documents_by_score(self, documents: list[Document], min_score: float) -> list[Document]:
+        """
+        Filter documents by minimum score.
+        
+        :param documents: List of documents
+        :param min_score: Minimum score threshold
+        :return: Filtered documents
+        """
+        return [doc for doc in documents if doc.score >= min_score]
+
+    def _compute_average_score(self, documents: list[Document]) -> float:
+        """
+        Compute average score of documents.
+        
+        :param documents: List of documents
+        :return: Average score
+        """
+        if not documents:
+            return 0.0
+        total = sum(doc.score for doc in documents)
+        return total / len(documents)
+
     def retrieve(
         self,
         app_id: str,
